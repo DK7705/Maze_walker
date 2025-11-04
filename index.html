@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale-1.0">
+    <title>Maze Solver</title>
+    <style>
+        :root {
+            /* These variables are for the page, but no longer used by the canvas */
+            --primary: #4a90e2;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+            --wall: #2c3e50;
+            --background: #f5f6fa;
+            --path-default: white;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background: var(--background);
+            color: #2c3e50;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 2rem;
+        }
+        
+        .main-content {
+            display: flex;
+            gap: 2rem;
+            max-width: 1400px;
+        }
+
+        .maze-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 400px;
+        }
+
+        .controls {
+            flex-shrink: 0;
+            width: 300px;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .controls h3 {
+            margin-top: 0;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 0.5rem;
+        }
+
+        .control-group {
+            margin-bottom: 1rem;
+            border: 1px solid #eee;
+            padding: 0.75rem;
+            border-radius: 4px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        select, button, input[type="file"], input[type="text"], input[type="number"], input[type="range"] {
+            width: 100%;
+            padding: 0.5rem;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+        
+        /* Style for the new name input */
+        input[type="text"] {
+            margin-bottom: 0.5rem;
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            font-weight: bold;
+            margin-top: 0.5rem;
+        }
+
+        button.secondary {
+            background: #6c757d;
+        }
+
+        button:hover:not(:disabled) {
+            opacity: 0.9;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .maze-container {
+            margin-top: 2rem;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow: auto;
+            border: 1px solid #ddd;
+        }
+
+        canvas {
+            background: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 4px;
+            image-rendering: pixelated; 
+        }
+
+        .stats, .algorithm-info {
+            margin-top: 1rem;
+            text-align: left;
+            font-size: 0.9rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .stats p, .algorithm-info p {
+            margin: 0.25rem 0;
+        }
+
+        .error {
+            background: var(--danger);
+            color: white;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+            text-align: center;
+        }
+
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .maze-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .maze-card {
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        /* Loading animation */
+        .loading {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            margin: 2rem 0;
+        }
+
+        .loading.visible {
+            display: flex;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 1200px) {
+            .main-content {
+                flex-direction: column;
+                align-items: center;
+            }
+            .controls {
+                width: 100%;
+                max-width: 600px;
+            }
+            .maze-container {
+                max-width: 90vw;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-content">
+        <div class="maze-section">
+            <header class="header">
+                <h1>Maze Solver</h1>
+                <p>Upload, generate, and solve mazes using multiple algorithms</p>
+            </header>
+
+            <div id="error" style="display: none;" class="error"></div>
+            
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+            </div>
+
+            <div class="maze-container">
+                <canvas id="mazeCanvas"></canvas>
+            </div>
+
+            <div id="algorithm-info" class="algorithm-info" style="display: none;"></div>
+            
+        </div>
+
+        <div class="controls">
+            <h3>Controls</h3>
+
+            <div class="control-group">
+                <label for="algorithm">Solving Algorithm</label>
+                <select id="algorithm" onchange="updateAlgorithmInfo()">
+                    <option value="bfs">Breadth-First Search</option>
+                    <option value="dfs">Depth-First Search</option>
+                    <option value="astar">A* Search</option>
+                </select>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button onclick="solveMaze()" id="solveButton" style="flex: 1;">Solve Maze</button>
+                    <button onclick="pauseAnimation()" id="pauseButton" class="secondary" style="flex: 1;" disabled>Pause</button>
+                </div>
+                <label for="animationSpeed" style="margin-top: 1rem;">Animation speed: <span id="speedValue">5</span> ms/step</label>
+                <input type="range" id="animationSpeed" min="1" max="100" value="5" oninput="document.getElementById('speedValue').textContent=this.value">
+            </div>
+
+            <div class="control-group">
+                <label>Generate maze</label>
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                    <input type="number" id="genRows" placeholder="Rows (e.g. 51)" value="31" min="11" step="2" style="flex: 1;">
+                    <input type="number" id="genCols" placeholder="Cols (e.g. 51)" value="31" min="11" step="2" style="flex: 1;">
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button onclick="generateMaze('dfs')" id="generateDFS" style="flex: 1;">Generate DFS Maze</button>
+                    <button onclick="generateMaze('prim')" id="generatePrim" style="flex: 1;">Generate Prim Maze</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <button onclick="clearPath()">Clear Path</button>
+                <label for="mazeFile" style="margin-top: 1rem;">Upload Maze File</label>
+                <input type="file" id="mazeFile" accept=".txt" onchange="handleFileSelect()">
+                
+                <label for="mazeName" style="margin-top: 1rem;">Custom Maze Name</label>
+                <input type="text" id="mazeName" placeholder="Enter name (optional)">
+                <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                    <button onclick="saveMaze()" id="saveButton" disabled style="flex: 1;">Save</button>
+                    <button onclick="openManageModal()" id="manageButton" style="flex: 1;">Manage</button>
+                </div>
+                <button onclick="deleteSelectedMaze()" id="deleteSelectedMaze" class="secondary" style="margin-top: 0.5rem;" disabled>Delete Selected Maze</button>
+            </div>
+
+            <div id="stats" class="stats">
+                <p>Solution Stats: No data yet. Solve a maze to see details.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="manageModal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-top: 0;">Manage Mazes</h3>
+            <div class="maze-grid" id="mazeGrid">
+                </div>
+            <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem;">
+                <button onclick="deleteSelectedInModal()" class="secondary">Delete Selected</button>
+                <button onclick="closeManageModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('mazeCanvas');
+        const ctx = canvas.getContext('2d');
+        const CELL_SIZE = 10;
+        
+        const COLORS = {
+            PATH: '#FFFFFF',
+            WALL: '#2c3e50',
+            START: '#4a90e2',
+            END: '#e74c3c',
+            SOLUTION: '#2ecc71'
+        };
+        
+        let currentMaze = null; 
+        let currentPath = null;
+        let animationFrameId = null; 
+        let animationIndex = 0;
+        let isPaused = false;
+        let selectedFileName = null; 
+
+        const algorithmDetails = {
+            'bfs': {
+                name: 'Breadth-First Search (BFS)',
+                complexity: 'Time complexity: O(V + E)\nSpace complexity: O(V)',
+                description: 'Explores layer by layer from the start node; guarantees shortest path in unweighted grids.'
+            },
+            'dfs': {
+                name: 'Depth-First Search (DFS)',
+                complexity: 'Time complexity: O(V + E)\nSpace complexity: O(V)',
+                description: 'Explores as far as possible along each branch before backtracking; does not guarantee shortest path.'
+            },
+            'astar': {
+                name: 'A* Search (A*)',
+                complexity: 'Time complexity: Depends on heuristic; worst-case exponential\nSpace complexity: O(V)',
+                description: 'Uses a heuristic (Manhattan) to prioritize promising paths; usually much faster than uninformed search when heuristic is good.'
+            }
+        };
+
+        function updateAlgorithmInfo() {
+            const algo = document.getElementById('algorithm').value;
+            const info = algorithmDetails[algo];
+            const infoDiv = document.getElementById('algorithm-info');
+
+            infoDiv.style.display = 'block';
+            infoDiv.innerHTML = `
+                <h4>${info.name}</h4>
+                <p><strong>Time complexity:</strong> ${info.complexity.split('\n')[0].replace('Time complexity: ','')}</p>
+                <p><strong>Space complexity:</strong> ${info.complexity.split('\n')[1].replace('Space complexity: ','')}</p>
+                <p>${info.description}</p>
+            `;
+            clearPath(true);
+        }
+
+        function showError(message) {
+            const error = document.getElementById('error');
+            error.textContent = message;
+            error.style.display = 'block';
+        }
+
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+
+        function showLoading(show) {
+            const loading = document.getElementById('loading');
+            loading.classList.toggle('visible', show);
+            document.getElementById('solveButton').disabled = show;
+            document.getElementById('generateDFS').disabled = show;
+            document.getElementById('generatePrim').disabled = show;
+        }
+
+        function drawMaze(grid, path = null, stepIndex = -1) {
+            if (!grid || grid.length === 0) {
+                canvas.width = 0;
+                canvas.height = 0;
+                return;
+            }
+            
+            const rows = grid.length;
+            const cols = grid[0].length;
+            
+            canvas.width = cols * CELL_SIZE;
+            canvas.height = rows * CELL_SIZE;
+            
+            ctx.fillStyle = COLORS.PATH;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    const cell = (typeof grid[y] === 'string') ? grid[y][x] : grid[y][x];
+                    const cx = x * CELL_SIZE;
+                    const cy = y * CELL_SIZE;
+
+                    if (cell === '#') {
+                        ctx.fillStyle = COLORS.WALL;
+                        ctx.fillRect(cx, cy, CELL_SIZE, CELL_SIZE);
+                    } else if (cell === 'S') {
+                        ctx.fillStyle = COLORS.START;
+                        ctx.fillRect(cx, cy, CELL_SIZE, CELL_SIZE);
+                    } else if (cell === 'E') {
+                        ctx.fillStyle = COLORS.END;
+                        ctx.fillRect(cx, cy, CELL_SIZE, CELL_SIZE);
+                    }
+                }
+            }
+            
+            if (path && path.length > 0 && stepIndex >= 0) {
+                ctx.strokeStyle = COLORS.SOLUTION;
+                ctx.lineWidth = Math.max(1, CELL_SIZE / 3);
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                
+                ctx.beginPath();
+                const [startX, startY] = path[0];
+                ctx.moveTo(startX * CELL_SIZE + CELL_SIZE/2, startY * CELL_SIZE + CELL_SIZE/2);
+                
+                for (let i = 1; i <= stepIndex && i < path.length; i++) {
+                    const [x, y] = path[i];
+                    ctx.lineTo(x * CELL_SIZE + CELL_SIZE/2, y * CELL_SIZE + CELL_SIZE/2);
+                }
+                ctx.stroke();
+            }
+        }
+
+        function clearPath(keepStats = false) {
+            cancelAnimationFrame(animationFrameId); 
+            animationFrameId = null;
+            animationIndex = 0;
+            isPaused = false;
+            document.getElementById('pauseButton').disabled = true;
+            document.getElementById('pauseButton').textContent = 'Pause';
+            
+            if (currentMaze) {
+                drawMaze(currentMaze);
+            }
+            if (!keepStats) {
+                 document.getElementById('stats').innerHTML = `<p>Solution Stats: No data yet. Solve a maze to see details.</p>`;
+            }
+        }
+        
+        function animateSolution(path, grid, stats) {
+            clearPath(true);
+            animationIndex = 0;
+            isPaused = false;
+            document.getElementById('pauseButton').disabled = false;
+            document.getElementById('pauseButton').textContent = 'Pause';
+
+            let lastFrameTime = performance.now();
+
+            function runAnimation(currentTime) {
+                if (isPaused) {
+                    animationFrameId = requestAnimationFrame(runAnimation);
+                    lastFrameTime = currentTime; 
+                    return;
+                }
+
+                const speed = parseInt(document.getElementById('animationSpeed').value);
+                const elapsed = currentTime - lastFrameTime;
+
+                if (elapsed > speed) {
+                    lastFrameTime = currentTime;
+
+                    if (animationIndex < path.length) {
+                        drawMaze(grid, path, animationIndex);
+                        animationIndex++;
+                    } else {
+                        cancelAnimationFrame(animationFrameId);
+                        animationFrameId = null;
+                        document.getElementById('pauseButton').disabled = true;
+                        
+                        drawMaze(grid, path, path.length - 1); 
+
+                        document.getElementById('stats').innerHTML = `
+                            <h4>Solution Stats</h4>
+                            <p>Nodes Explored: ${stats.nodes_explored}</p>
+                            <p>Time Taken: ${stats.time_ms.toFixed(2)}ms</p>
+                            <p>Path Length: ${path.length} steps</p>
+                        `;
+                        return; 
+                    }
+                }
+                
+                animationFrameId = requestAnimationFrame(runAnimation);
+            }
+
+            animationFrameId = requestAnimationFrame(runAnimation);
+        }
+
+        function pauseAnimation() {
+            isPaused = !isPaused;
+            document.getElementById('pauseButton').textContent = isPaused ? 'Resume' : 'Pause';
+        }
+        
+        async function handleFileSelect() {
+            const file = document.getElementById('mazeFile').files[0];
+            if (!file) return;
+
+            hideError();
+            clearPath();
+            
+            try {
+                const fileContent = await file.text();
+                const lines = fileContent.split(/\r?\n/); 
+                if (lines.length < 2) throw new Error("Invalid maze file: too short.");
+                
+                const [rows, cols] = lines[0].split(' ').map(Number);
+                if (isNaN(rows) || isNaN(cols) || rows <= 0 || cols <= 0) {
+                    throw new Error("Invalid maze file: dimensions (line 1) are not valid numbers.");
+                }
+                
+                const grid = lines.slice(1, rows + 1).map(line => line.padEnd(cols, ' ').split(''));
+                
+                currentMaze = grid; 
+                selectedFileName = file.name;
+                
+                drawMaze(currentMaze);
+                document.getElementById('saveButton').disabled = false;
+                document.getElementById('deleteSelectedMaze').disabled = false;
+                
+            } catch (error) {
+                showError(error.message);
+                currentMaze = null;
+                drawMaze(null);
+            }
+        }
+        
+        async function solveMaze() {
+            const file = document.getElementById('mazeFile').files[0];
+            const algorithm = document.getElementById('algorithm').value;
+            
+            if (!file && !currentMaze) {
+                showError('Please select a maze file or generate a maze first.');
+                return;
+            }
+            
+            hideError();
+            showLoading(true);
+            clearPath(true); 
+
+            const formData = new FormData();
+            formData.append('algorithm', algorithm);
+            
+            if (file) {
+                formData.append('file', file);
+                if (!currentMaze) await handleFileSelect();
+            } else if (currentMaze) {
+                const gridToSend = (typeof currentMaze[0] === 'string') 
+                    ? currentMaze 
+                    : currentMaze.map(row => row.join(''));
+                
+                const data = {
+                    grid: gridToSend,
+                    algorithm: algorithm
+                };
+                formData.append('data', JSON.stringify(data));
+                document.getElementById('mazeFile').value = '';
+            }
+
+            try {
+                const response = await fetch('/api/solve', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to solve maze');
+                }
+                
+                currentMaze = data.grid;
+                currentPath = data.path;
+                
+                animateSolution(data.path, data.grid, data.stats);
+                
+            } catch (error) {
+                showError(error.message);
+                if (currentMaze) drawMaze(currentMaze); 
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        async function generateMaze(algorithm) {
+            const rows = parseInt(document.getElementById('genRows').value);
+            const cols = parseInt(document.getElementById('genCols').value);
+            
+            if (rows < 3 || cols < 3 || rows % 2 === 0 || cols % 2 === 0) {
+                showError('Maze dimensions must be odd and at least 3x3 (e.g., 31, 51).');
+                return;
+            }
+            
+            hideError();
+            showLoading(true);
+            clearPath();
+            
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ algorithm, rows, cols })
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to generate maze');
+                }
+                
+                currentMaze = data.grid; 
+                selectedFileName = `generated_${Date.now()}_${rows}x${cols}.txt`;
+
+                drawMaze(currentMaze); 
+                document.getElementById('saveButton').disabled = false;
+                document.getElementById('deleteSelectedMaze').disabled = false;
+                document.getElementById('mazeFile').value = ''; 
+                document.getElementById('mazeName').value = ''; // Clear name field
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        // --- Management Functions (Using localStorage) ---
+
+        // --- START OF MODIFICATION ---
+        function saveMaze() {
+            if (!currentMaze) {
+                showError('No maze loaded or generated to save.');
+                return;
+            }
+            
+            // Get custom name from input field
+            const nameInput = document.getElementById('mazeName');
+            let customName = nameInput.value.trim();
+            
+            let filenameToSave;
+            
+            if (customName) {
+                // Use custom name if provided
+                if (!customName.endsWith('.txt')) {
+                    customName += '.txt';
+                }
+                filenameToSave = customName;
+            } else {
+                // Fallback to default name
+                if (!selectedFileName) { // Should not happen if save is enabled
+                    selectedFileName = `maze_${Date.now()}.txt`;
+                }
+                filenameToSave = selectedFileName;
+            }
+            
+            // Normalize grid to list[string] for storage
+            const gridArray = (typeof currentMaze[0] === 'string') 
+                ? currentMaze 
+                : currentMaze.map(row => row.join(''));
+
+            const rows = gridArray.length;
+            const cols = gridArray[0].length;
+            const fileContent = `${rows} ${cols}\n` + gridArray.join('\n');
+            
+            try {
+                // Check if file already exists (only if it's a new custom name)
+                if (customName && localStorage.getItem(filenameToSave)) {
+                    if (!confirm(`A maze named "${filenameToSave}" already exists. Overwrite it?`)) {
+                        return; // User canceled
+                    }
+                }
+                
+                localStorage.setItem(filenameToSave, fileContent);
+                alert(`Maze saved successfully as ${filenameToSave}!`);
+                
+                // Update internal state
+                selectedFileName = filenameToSave; 
+                document.getElementById('saveButton').disabled = true; 
+                document.getElementById('deleteSelectedMaze').disabled = false;
+                nameInput.value = ''; // Clear input field
+                
+            } catch (e) {
+                showError('Failed to save maze to localStorage. It might be full.');
+            }
+        }
+        // --- END OF MODIFICATION ---
+
+        function loadMaze(filename) {
+            try {
+                const fileContent = localStorage.getItem(filename);
+                if (fileContent) {
+                    const lines = fileContent.split(/\r?\n/);
+                    const [rows, cols] = lines[0].split(' ').map(Number);
+                    const grid = lines.slice(1, rows + 1).map(line => line.padEnd(cols, ' ').split(''));
+
+                    currentMaze = grid;
+                    selectedFileName = filename;
+                    
+                    drawMaze(currentMaze);
+                    clearPath();
+                    
+                    document.getElementById('saveButton').disabled = true;
+                    document.getElementById('deleteSelectedMaze').disabled = false;
+                    document.getElementById('mazeFile').value = ''; 
+                    document.getElementById('mazeName').value = ''; // Clear name field
+                    closeManageModal();
+                }
+            } catch (e) {
+                showError(`Failed to load and parse maze: ${e.message}`);
+            }
+        }
+        
+        function deleteMaze(filename) {
+            localStorage.removeItem(filename);
+            if (selectedFileName === filename) {
+                selectedFileName = null;
+            }
+            renderManageModal();
+        }
+
+        function openManageModal() {
+            renderManageModal();
+            document.getElementById('manageModal').style.display = 'flex';
+        }
+
+        function closeManageModal() {
+            document.getElementById('manageModal').style.display = 'none';
+        }
+        
+        function deleteSelectedMaze() {
+            if (selectedFileName) {
+                if (confirm(`Are you sure you want to delete: ${selectedFileName}? This will remove it from localStorage.`)) {
+                    deleteMaze(selectedFileName);
+                    currentMaze = null; 
+                    selectedFileName = null;
+                    drawMaze(null);
+                    clearPath();
+                    document.getElementById('deleteSelectedMaze').disabled = true;
+                    document.getElementById('saveButton').disabled = true;
+                    document.getElementById('mazeName').value = '';
+                }
+            } else {
+                alert('No maze currently loaded or selected.');
+            }
+        }
+        
+        function deleteSelectedInModal() {
+            const checkboxes = document.querySelectorAll('#mazeGrid input[type="checkbox"]:checked');
+            if (checkboxes.length === 0) {
+                alert('Please select mazes to delete.');
+                return;
+            }
+            if (confirm(`Are you sure you want to delete ${checkboxes.length} maze(s)?`)) {
+                checkboxes.forEach(cb => {
+                    deleteMaze(cb.value);
+                });
+            }
+        }
+
+        function renderManageModal() {
+            const gridDiv = document.getElementById('mazeGrid');
+            gridDiv.innerHTML = '';
+            
+            const filenames = Object.keys(localStorage);
+            if (filenames.length === 0) {
+                gridDiv.innerHTML = '<p>No saved mazes found. Generate or upload a maze and click "Save".</p>';
+                return;
+            }
+
+            filenames.forEach(filename => {
+                const card = document.createElement('div');
+                card.className = 'maze-card';
+                card.innerHTML = `
+                    <label style="display: block; text-align: left;">
+                        <input type="checkbox" value="${filename}" style="width: auto; margin-right: 5px;">
+                        ${filename}
+                    </label>
+                    <button onclick="loadMaze('${filename}')" style="margin-top: 10px;">Load</button>
+                `;
+                gridDiv.appendChild(card);
+            });
+        }
+
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            updateAlgorithmInfo();
+            // Load maze2.txt from original files for demonstration
+            const maze2_content = "10 20\n####################\n#S #              #\n# # ############# #\n#                 #\n################ ##\n#                 #\n# ################\n#             #  E#\n# ###############\n####################";
+            try {
+                const lines = maze2_content.split(/\r?\n/);
+                const [rows, cols] = lines[0].split(' ').map(Number);
+                currentMaze = lines.slice(1, rows + 1).map(line => line.padEnd(cols, ' ').split(''));
+                selectedFileName = "maze2.txt";
+                drawMaze(currentMaze);
+                document.getElementById('deleteSelectedMaze').disabled = false;
+                document.getElementById('saveButton').disabled = false; // Allow saving the demo maze
+            } catch (e) {
+                console.error("Failed to load initial maze:", e);
+            }
+        });
+    </script>
+</body>
+</html>
