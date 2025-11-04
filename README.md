@@ -90,3 +90,27 @@ Where:
 - Guarantees shortest path
 - Uses heuristics to optimize search
 - Memory usage: O(w*h)
+
+
+## 📂 File Structure
+Here is the project's file structure:
+
+```
+MAZE_WALKER-MAIN/
+├── maze_solver/
+│   ├── __init__.py
+│   ├── algorithms.py   # Contains BFS, DFS, and A* solving algorithms
+│   ├── generators.py   # Contains DFS and Prim's maze generators
+│   └── maze.py         # Maze class to handle grid logic
+│
+├── templates/
+│   └── index.html      # Main frontend page for the UI
+│
+├── .gitignore
+├── app.py              # Main Flask application file
+├── maze1.txt           # Example maze file
+├── maze2.txt           # Example maze file
+├── README.md           # Project documentation
+├── requirements.txt    # Python dependencies
+└── setup.py            # Project setup script
+```
