@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale-1.0">
     <title>Maze Solver</title>
     <style>
+        
+        h1{
+            margin-bottom: 0.2rem;
+            text-align: center;
+            
+        }
+
         :root {
             /* These variables are for the page, but no longer used by the canvas */
             --primary: #4a90e2;
@@ -223,13 +230,122 @@
                 max-width: 90vw;
             }
         }
+
+        button .icon {
+            width: 1.25rem;
+            height: 1.25rem;
+            margin-right: 0.25rem;
+        }
+        button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        button, select, input {
+    transition: all 0.2s ease-in-out;
+    }
+
+    /* Style buttons on hover */
+    button:not(:disabled):hover {
+        opacity: 0.85; /* Already in your code, good! */
+        transform: translateY(-2px); /* Lifts the button slightly */
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1); /* Adds a subtle shadow */
+    }
+
+    /* Style inputs on focus */
+    select:focus, input:focus {
+        border-color: var(--primary); /* Uses your primary color */
+        box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.3); /* Adds a "glow" */
+        outline: none;
+    }
+
+    /* Add these styles for dark mode */
+    body.dark-mode {
+        --background: #2c3e50;
+        --wall: #f5f6fa;
+        --path-default: #34495e;
+        color: #f5f6fa;
+    }
+
+    /* Override specific light components */
+    body.dark-mode .controls,
+    body.dark-mode .stats,
+    body.dark-mode .algorithm-info,
+    body.dark-mode .modal-content {
+        background: #34495e;
+        border-color: #4a5c6e;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+
+    body.dark-mode canvas {
+        background: #34495e; /* Match controls background */
+    }
+
+    /* Update inputs/selects in dark mode */
+    body.dark-mode select, 
+    body.dark-mode input[type="file"], 
+    body.dark-mode input[type="text"], 
+    body.dark-mode input[type="number"], 
+    body.dark-mode input[type="range"] {
+        background: #4a5c6e;
+        color: white;
+        border-color: #5a6c7e;
+    }
+
+    body.dark-mode button.secondary {
+        background: #4a5c6e;
+    }
+
+    /* Add this CSS for the new theme toggle button */
+    #themeToggleBtn {
+        position: fixed; /* Stays in view even when scrolling */
+        top: 1rem;
+        right: 1rem;
+        width: 44px;    /* 2.75rem */
+        height: 44px;   /* 2.75rem */
+        padding: 8px;   /* 0.5rem */
+        border-radius: 50%; /* Circular */
+        border: 1px solid #ddd;
+        background: white;
+        cursor: pointer;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        z-index: 1001; /* Make sure it's above other content */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 0; /* Override default button margin */
+    }
+
+    #themeToggleBtn svg {
+        color: #2c3e50; /* Icon color (light mode) */
+    }
+
+    /* Style the button in dark mode */
+    body.dark-mode #themeToggleBtn {
+        background: #4a5c6e;
+        border-color: #5a6c7e;
+    }
+
+    body.dark-mode #themeToggleBtn svg {
+        color: #f5f6fa; /* Icon color (dark mode) */
+    }
+
     </style>
 </head>
 <body>
+    <button id="themeToggleBtn" onclick="toggleTheme()" title="Toggle dark mode">
+        <svg id="themeIconMoon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style="width: 24px; height: 24px;">
+            <path fill-rule="evenodd" d="M7.455 2.545A.75.75 0 0 1 8.5 2.25a.75.75 0 0 1 .75.75 8.5 8.5 0 0 0 8.5 8.5.75.75 0 0 1 .75.75.75.75 0 0 1-.295 1.055 10 10 0 1 1-9.96-10.96A.75.75 0 0 1 7.455 2.545Z" clip-rule="evenodd" />
+        </svg>
+        <svg id="themeIconSun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style="width: 24px; height: 24px; display: none;">
+            <path d="M10 2a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 10 2ZM10 15a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 10 15ZM16.036 4.964a.75.75 0 0 1 0 1.06l-1.06 1.06a.75.75 0 0 1-1.06-1.06l1.06-1.06a.75.75 0 0 1 1.06 0ZM4.964 16.036a.75.75 0 0 1 0-1.06l-1.06-1.06a.75.75 0 0 1-1.06 1.06l1.06 1.06a.75.75 0 0 1 1.06 0ZM17.25 10a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 0 1.5h-1.5a.75.75 0 0 1-.75-.75ZM2.75 10a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 0 1.5h-1.5a.75.75 0 0 1-.75-.75ZM16.036 15.036a.75.75 0 0 1-1.06 0l-1.06-1.06a.75.75 0 0 1 1.06-1.06l1.06 1.06a.75.75 0 0 1 0 1.06ZM4.964 3.964a.75.75 0 0 1 1.06 0l1.06 1.06a.75.75 0 0 1-1.06 1.06L3.964 4.964a.75.75 0 0 1 0-1.06ZM10 6.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z" />
+        </svg>
+    </button>
     <div class="main-content">
         <div class="maze-section">
             <header class="header">
-                <h1>Maze Solver</h1>
+                <h1>MAZE SOLVER</h1>
                 <p>Upload, generate, and solve mazes using multiple algorithms</p>
             </header>
 
@@ -249,7 +365,6 @@
 
         <div class="controls">
             <h3>Controls</h3>
-
             <div class="control-group">
                 <label for="algorithm">Solving Algorithm</label>
                 <select id="algorithm" onchange="updateAlgorithmInfo()">
@@ -258,7 +373,12 @@
                     <option value="astar">A* Search</option>
                 </select>
                 <div style="display: flex; gap: 0.5rem;">
-                    <button onclick="solveMaze()" id="solveButton" style="flex: 1;">Solve Maze</button>
+                    <button onclick="solveMaze()" id="solveButton" style="flex: 1;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="icon">
+                            <path fill-rule="evenodd" d="M2 10a8 8 0 1 1 16 0 8 8 0 0 1-16 0Zm6.39-2.908a.75.75 0 0 1 .766.027l3.5 2.25a.75.75 0 0 1 0 1.262l-3.5 2.25A.75.75 0 0 1 8 12.25v-4.5a.75.75 0 0 1 .39-.658Z" clip-rule="evenodd" />
+                        </svg>
+                        Solve Maze
+                    </button>
                     <button onclick="pauseAnimation()" id="pauseButton" class="secondary" style="flex: 1;" disabled>Pause</button>
                 </div>
                 <label for="animationSpeed" style="margin-top: 1rem;">Animation speed: <span id="speedValue">5</span> ms/step</label>
@@ -314,10 +434,26 @@
         const ctx = canvas.getContext('2d');
         const CELL_SIZE = 10;
         
-        const COLORS = {
+        let COLORS = {
             PATH: '#FFFFFF',
             WALL: '#2c3e50',
             START: '#4a90e2',
+            END: '#e74c3c',
+            SOLUTION: '#2ecc71'
+        };
+
+        const LIGHT_COLORS = {
+            PATH: '#FFFFFF',
+            WALL: '#2c3e50',
+            START: '#4a90e2',
+            END: '#e74c3c',
+            SOLUTION: '#2ecc71'
+        };
+
+        const DARK_COLORS = {
+            PATH: '#34495e', // Dark background for path
+            WALL: '#dce1e6', // Light color for walls
+            START: '#4a90e2', // Keep start/end/solution vibrant
             END: '#e74c3c',
             SOLUTION: '#2ecc71'
         };
@@ -346,6 +482,37 @@
                 description: 'Uses a heuristic (Manhattan) to prioritize promising paths; usually much faster than uninformed search when heuristic is good.'
             }
         };
+
+        function toggleTheme() {
+            const isDark = document.body.classList.toggle('dark-mode');
+            
+            // Get icon elements
+            const moonIcon = document.getElementById('themeIconMoon');
+            const sunIcon = document.getElementById('themeIconSun');
+
+            // Update the JS object for canvas drawing AND toggle icons
+            if (isDark) {
+                Object.assign(COLORS, DARK_COLORS);
+                moonIcon.style.display = 'none';
+                sunIcon.style.display = 'block';
+            } else {
+                Object.assign(COLORS, LIGHT_COLORS);
+                moonIcon.style.display = 'block';
+                sunIcon.style.display = 'none';
+            }
+            
+            // Redraw the maze with the new colors
+            if (currentMaze) {
+                // Check if a path is drawn (animation finished or paused)
+                const pathDrawn = currentPath && (animationIndex > 0 || !animationFrameId);
+                const step = pathDrawn ? (animationIndex > 0 ? animationIndex : currentPath.length - 1) : -1;
+
+                drawMaze(currentMaze, currentPath, step);
+            }
+
+            // Save preference to localStorage
+            localStorage.setItem('mazeTheme', isDark ? 'dark' : 'light');
+        }
 
         function updateAlgorithmInfo() {
             const algo = document.getElementById('algorithm').value;
@@ -809,6 +976,9 @@
                 document.getElementById('saveButton').disabled = false; // Allow saving the demo maze
             } catch (e) {
                 console.error("Failed to load initial maze:", e);
+            }
+            if (localStorage.getItem('mazeTheme') === 'dark') {
+                toggleTheme(); 
             }
         });
     </script>
